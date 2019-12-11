@@ -3,7 +3,8 @@
 [![pub package](https://img.shields.io/pub/v/flutter_local_notifications.svg)](https://pub.dartlang.org/packages/flutter_local_notifications)
 [![Build Status](https://api.cirrus-ci.com/github/MaikuB/flutter_local_notifications.svg)](https://cirrus-ci.com/github/MaikuB/flutter_local_notifications/master)
 
-A cross platform plugin for displaying local notifications. 
+A cross platform plugin for displaying local notifications.
+This fork can also handle media notifications on Android and can create a Media Player-like notification. An example is provided in the [sample app](./example/lib/main.dart#L727).
 
 ## Supported Platforms
 * Android API 16+ (4.1+, the minimum version supported by Flutter). Uses the NotificationCompat APIs so it can be run older Android devices
@@ -22,8 +23,8 @@ A cross platform plugin for displaying local notifications.
 * Specify a custom notification sound
 * Ability to handle when a user has tapped on a notification, when the app is the foreground, background or terminated
 * Determine if an app was launched due to tapping on a notification
-* Add actions to a notification
-* Handling notification action tapped
+* *️⃣Add actions to a notification (*Only in this fork*)
+* *️⃣Handling notification action tapped (*Only in this fork*)
 * [Android] Configuring the importance level
 * [Android] Configuring the priority
 * [Android] Customising the vibration pattern for notifications
@@ -36,10 +37,10 @@ A cross platform plugin for displaying local notifications.
     * Big text
     * Inbox
     * Messaging
-    * Media
+    * *️⃣Media (*Only in this fork*)
 * [Android] Group notifications
 * [Android] Show progress notifications
-* [Android] Configure notification visibility on the lockscreen
+* *️⃣[Android] Configure notification visibility on the lockscreen (*Only in this fork*)
 * [iOS] Customise the permissions to be requested around displaying notifications
 
 Note that this plugin aims to provide abstractions for all platforms as opposed to having methods that only work on specific platforms. However, each method allows passing in "platform-specifics" that contains data that is specific for customising notifications on each platform. This approach means that some scenarios may not be covered by the plugin. Developers can either fork or maintain their code for showing notifications in these situations. Note that the plugin still under development so expect the API surface to change over time.
