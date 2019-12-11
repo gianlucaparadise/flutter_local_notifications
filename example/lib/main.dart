@@ -20,6 +20,10 @@ final BehaviorSubject<ReceivedNotification> didReceiveLocalNotificationSubject =
 final BehaviorSubject<String> selectNotificationSubject =
     BehaviorSubject<String>();
 
+final BehaviorSubject<NotificationActionTappedPayload>
+    onNotificationActionTappedSubject =
+    BehaviorSubject<NotificationActionTappedPayload>();
+
 class ReceivedNotification {
   final int id;
   final String title;
@@ -31,6 +35,16 @@ class ReceivedNotification {
       @required this.title,
       @required this.body,
       @required this.payload});
+}
+
+class NotificationActionTappedPayload {
+  final String actionKey;
+  final Map<String, String> extras;
+
+  NotificationActionTappedPayload({
+    @required this.actionKey,
+    @required this.extras,
+  });
 }
 
 /// IMPORTANT: running the following code on its own won't work as there is setup required for each platform head project.
@@ -58,6 +72,10 @@ Future<void> main() async {
       debugPrint('notification payload: ' + payload);
     }
     selectNotificationSubject.add(payload);
+  }, onNotificationActionTapped:
+          (String actionKey, Map<String, String> extras) async {
+    onNotificationActionTappedSubject.add(
+        NotificationActionTappedPayload(actionKey: actionKey, extras: extras));
   });
   runApp(
     MaterialApp(
@@ -89,9 +107,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final MethodChannel platform =
       MethodChannel('crossingthestreams.io/resourceResolver');
+
+  var lastTappedAction = "";
+
   @override
   void initState() {
     super.initState();
+    onNotificationActionTappedSubject.stream.listen(onNotificationActionTapped);
     didReceiveLocalNotificationSubject.stream
         .listen((ReceivedNotification receivedNotification) async {
       await showDialog(
@@ -134,6 +156,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     didReceiveLocalNotificationSubject.close();
     selectNotificationSubject.close();
+    onNotificationActionTappedSubject.close();
     super.dispose();
   }
 
@@ -281,6 +304,13 @@ class _HomePageState extends State<HomePage> {
                       await _showIndeterminateProgressNotification();
                     },
                   ),
+                  PaddedRaisedButton(
+                    buttonText: 'Show notification with actions',
+                    onPressed: () async {
+                      await _showNotificationsWithActions();
+                    },
+                  ),
+                  Text('Last tapped action: $lastTappedAction'),
                   PaddedRaisedButton(
                     buttonText: 'Check pending notifications',
                     onPressed: () async {
@@ -616,6 +646,39 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _showNotificationsWithActions() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'your channel id', 'your channel name', 'your channel description');
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'notification with actions title',
+      'notification with actions body',
+      platformChannelSpecifics,
+      actions: [
+        NotificationAction(
+          icon: 'baseline_play_arrow_black_18dp',
+          title: 'Play',
+          actionKey: 'PLAY',
+          extras: {'extra1': 'play_extra'},
+        ),
+        NotificationAction(
+          icon: 'baseline_pause_black_18dp',
+          title: 'Pause',
+          actionKey: 'PAUSE',
+          extras: {'extra2': 'pause_extra'},
+        ),
+        NotificationAction(
+          icon: 'baseline_stop_black_18dp',
+          title: 'Stop',
+          actionKey: 'STOP',
+        ),
+      ],
+    );
+  }
+
   Future<void> _cancelAllNotifications() async {
     await flutterLocalNotificationsPlugin.cancelAll();
   }
@@ -767,6 +830,14 @@ class _HomePageState extends State<HomePage> {
 
   String _toTwoDigitString(int value) {
     return value.toString().padLeft(2, '0');
+  }
+
+  void onNotificationActionTapped(NotificationActionTappedPayload payload) {
+    debugPrint("onNotificationActionTapped extras: ${payload.extras}");
+
+    setState(() {
+      lastTappedAction = payload.actionKey;
+    });
   }
 
   Future<void> onDidReceiveLocalNotification(

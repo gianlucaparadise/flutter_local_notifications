@@ -1,6 +1,7 @@
 #import "FlutterLocalNotificationsPlugin.h"
 #import "NotificationTime.h"
 #import "NotificationDetails.h"
+#import "NotificationActionDetails.h"
 
 
 
@@ -62,6 +63,12 @@ NSString *const NOTIFICATION_ID = @"NotificationId";
 NSString *const PAYLOAD = @"payload";
 NSString *const NOTIFICATION_LAUNCHED_APP = @"notificationLaunchedApp";
 
+NSString *const ACTIONS = @"actions";
+
+NSString *const ACTION_ICON = @"icon";
+NSString *const ACTION_TITLE = @"title";
+NSString *const ACTION_KEY = @"actionKey";
+NSString *const ACTION_EXTRAS = @"extras";
 
 typedef NS_ENUM(NSInteger, RepeatInterval) {
     EveryMinute,
@@ -217,6 +224,9 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
     notificationDetails.presentAlert = displayAlert;
     notificationDetails.presentSound = playSound;
     notificationDetails.presentBadge = updateBadge;
+    
+    [self readNotificationActionList:notificationDetails call:call];
+    
     if(call.arguments[PLATFORM_SPECIFICS] != [NSNull null]) {
         NSDictionary *platformSpecifics = call.arguments[PLATFORM_SPECIFICS];
         
@@ -326,6 +336,75 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
     return userDict;
 }
 
+- (void) readNotificationActionList:(NotificationDetails *) notificationDetails call:(FlutterMethodCall * _Nonnull)call {
+    if(call.arguments[ACTIONS] == [NSNull null]) {
+        return;
+    }
+    
+    NSArray<NSDictionary<NSString *, NSObject *> *> *rawActionList = (NSArray<NSDictionary<NSString *, NSObject *> *> *) call.arguments[ACTIONS];
+    
+    notificationDetails.actions = [NSMutableArray new];
+    
+    for (NSDictionary<NSString *, NSObject *> * rawAction in rawActionList) {
+        NotificationActionDetails* action = [self readNotificationActionDetails:rawAction];
+        if (action != nil) {
+            [notificationDetails.actions addObject:action];
+        }
+    }
+    
+}
+
+- (NotificationActionDetails*)readNotificationActionDetails:(NSDictionary<NSString *, NSObject *> *) action {
+    if (action == nil) {
+        return nil;
+    }
+
+    NotificationActionDetails *actionDetail = [NotificationActionDetails new];
+    actionDetail.title = (NSString*) action[ACTION_TITLE];
+    actionDetail.actionKey = (NSString*) action[ACTION_KEY];
+    actionDetail.extras = (NSDictionary<NSString *, NSString *>*) action[ACTION_EXTRAS];
+    
+    return actionDetail;
+}
+
+- (void) buildNotificationActions:(NotificationDetails *) notificationDetails center:(UNUserNotificationCenter * _Nonnull)center content:(UNMutableNotificationContent * _Nonnull)content API_AVAILABLE(ios(10.0)) {
+    if (notificationDetails.actions == nil) {
+        return;
+    }
+
+    NSMutableString *categoryName = [NSMutableString new];
+    [categoryName appendString:@"category_"];
+    
+    NSMutableDictionary *userInfo = [content.userInfo mutableCopy];
+    userInfo[ACTION_EXTRAS] = [NSMutableDictionary new];
+    
+    // I need to build the notification actions list
+    NSMutableArray<NotificationActionDetails*> *actions = notificationDetails.actions;
+    NSMutableArray<UNNotificationAction *> *unActions = [[NSMutableArray alloc] initWithCapacity:[actions count]];
+    for ( int i = 0; i < [actions count]; i++) {
+        NotificationActionDetails *actionDetail = [actions objectAtIndex:i];
+        UNNotificationAction *unAction = [UNNotificationAction
+                                          actionWithIdentifier:actionDetail.actionKey
+                                          title:actionDetail.title
+                                          options:UNNotificationActionOptionForeground];
+        unActions[i] = unAction;
+        userInfo[ACTION_EXTRAS][actionDetail.actionKey] = actionDetail.extras;
+        
+        [categoryName appendString:actionDetail.actionKey];
+    }
+    
+    // I create a category with the actions that I'm using and I set it on the NotificationCenter
+    UNNotificationCategory *category = [UNNotificationCategory
+                                        categoryWithIdentifier:categoryName
+                                        actions:unActions intentIdentifiers:@[]
+                                        options:UNNotificationCategoryOptionNone];
+    
+    NSSet *categories = [NSSet setWithObject:category];
+    [center setNotificationCategories:categories];
+    content.categoryIdentifier = categoryName;
+    content.userInfo = userInfo;
+}
+
 - (void) showUserNotification:(NotificationDetails *) notificationDetails NS_AVAILABLE_IOS(10.0) {
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
     UNNotificationTrigger *trigger;
@@ -385,9 +464,14 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
                                                                     NSCalendarUnitSecond) fromDate:date];
         trigger = [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:dateComponents repeats:false];
     }
+    
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    
+    [self buildNotificationActions:notificationDetails center:center content:content];
+    
     UNNotificationRequest* notificationRequest = [UNNotificationRequest
                                                   requestWithIdentifier:[notificationDetails.id stringValue] content:content trigger:trigger];
-    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    
     [center addNotificationRequest:notificationRequest withCompletionHandler:^(NSError * _Nullable error) {
         if (error != nil) {
             NSLog(@"Unable to Add Notification Request");
@@ -487,6 +571,13 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
     [_channel invokeMethod:@"selectNotification" arguments:payload];
 }
 
+- (void)notifyActionTapped:(NSString *)actionKey extras:(NSDictionary *)extras {
+    NSMutableDictionary<NSString*, NSObject*> *arguments = [[NSMutableDictionary<NSString*, NSObject*> alloc] init];
+    arguments[ACTION_KEY] = actionKey;
+    arguments[ACTION_EXTRAS] = extras;
+    [_channel invokeMethod:@"onNotificationActionTapped" arguments:arguments];
+}
+
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center
 didReceiveNotificationResponse:(UNNotificationResponse *)response
          withCompletionHandler:(void (^)(void))completionHandler NS_AVAILABLE_IOS(10.0) {
@@ -499,7 +590,16 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
             launchingAppFromNotification = true;
         }
     }
+    else {
+        NSDictionary *userInfo = response.notification.request.content.userInfo;
+        NSDictionary *extras = (NSDictionary*) userInfo[ACTION_EXTRAS][response.actionIdentifier];
+        
+        [self notifyActionTapped:response.actionIdentifier extras:extras];
+    }
+    
+    completionHandler();
 }
+
 - (BOOL)application:(UIApplication *)application
 didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     if (launchOptions != nil) {

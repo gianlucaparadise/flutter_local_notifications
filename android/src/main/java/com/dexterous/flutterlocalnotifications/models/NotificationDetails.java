@@ -14,6 +14,7 @@ import com.dexterous.flutterlocalnotifications.models.styles.MessagingStyleInfor
 import com.dexterous.flutterlocalnotifications.models.styles.StyleInformation;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -91,6 +92,14 @@ public class NotificationDetails {
     private static final String LED_ON_MS = "ledOnMs";
     private static final String LED_OFF_MS = "ledOffMs";
 
+    private static final String ACTIONS = "actions";
+
+    //region NotificationAction class properties
+    private static final String ACTION_ICON = "icon";
+    private static final String ACTION_TITLE = "title";
+    public static final String ACTION_KEY = "actionKey";
+    public static final String ACTION_EXTRAS = "extras";
+    //endregion
 
     public static final String ID = "id";
     public static final String TITLE = "title";
@@ -141,6 +150,7 @@ public class NotificationDetails {
     public Integer ledOffMs;
     public String ticker;
     public Boolean allowWhileIdle;
+    public NotificationActionDetails[] actions;
 
 
     // Note: this is set on the Android to save details about the icon that should be used when re-hydrating scheduled notifications when a device has been restarted.
@@ -169,6 +179,7 @@ public class NotificationDetails {
         if (arguments.containsKey(DAY)) {
             notificationDetails.day = (Integer) arguments.get(DAY);
         }
+        readNotificationActionList(notificationDetails, arguments);
         @SuppressWarnings("unchecked")
         Map<String, Object> platformChannelSpecifics = (Map<String, Object>) arguments.get(PLATFORM_SPECIFICS);
         if (platformChannelSpecifics != null) {
@@ -289,6 +300,40 @@ public class NotificationDetails {
         String uri = (String) person.get(URI);
         return new PersonDetails(bot, icon, iconSource, important, key, name, uri);
     }
+
+    //region NotificationAction methods
+    private static void readNotificationActionList(NotificationDetails notificationDetails, Map<String, Object> arguments) {
+        if (!arguments.containsKey(ACTIONS)) {
+            return;
+        }
+
+        @SuppressWarnings("unchecked")
+        ArrayList<HashMap<String, Object>> rawActionList = (ArrayList<HashMap<String, Object>>) arguments.get(ACTIONS);
+
+        if (rawActionList == null) {
+            return;
+        }
+
+        notificationDetails.actions = new NotificationActionDetails[rawActionList.size()];
+        for (int i = 0; i < rawActionList.size(); i++) {
+            HashMap<String, Object> rawAction = rawActionList.get(i);
+            notificationDetails.actions[i] = readNotificationActionDetails(rawAction);
+        }
+    }
+
+    private static NotificationActionDetails readNotificationActionDetails(Map<String, Object> action) {
+        if (action == null) {
+            return null;
+        }
+
+        String icon = (String) action.get(ACTION_ICON);
+        String title = (String) action.get(ACTION_TITLE);
+        String actionKey = (String) action.get(ACTION_KEY);
+        @SuppressWarnings("unchecked")
+        HashMap<String, String> extras = (HashMap<String, String>) action.get(ACTION_EXTRAS);
+        return new NotificationActionDetails(icon, title, actionKey, extras);
+    }
+    //endregion
 
     @SuppressWarnings("unchecked")
     private static ArrayList<MessageDetails> readMessages(ArrayList<Map<String, Object>> messages) {

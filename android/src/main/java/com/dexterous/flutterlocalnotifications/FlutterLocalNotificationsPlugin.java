@@ -5,8 +5,10 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -26,6 +28,8 @@ import androidx.core.graphics.drawable.IconCompat;
 
 import com.dexterous.flutterlocalnotifications.models.IconSource;
 import com.dexterous.flutterlocalnotifications.models.MessageDetails;
+import com.dexterous.flutterlocalnotifications.models.NotificationActionBroadcastReceiver;
+import com.dexterous.flutterlocalnotifications.models.NotificationActionDetails;
 import com.dexterous.flutterlocalnotifications.models.NotificationChannelAction;
 import com.dexterous.flutterlocalnotifications.models.NotificationDetails;
 import com.dexterous.flutterlocalnotifications.models.PersonDetails;
@@ -55,6 +59,9 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
+
+import static com.dexterous.flutterlocalnotifications.models.NotificationDetails.ACTION_EXTRAS;
+import static com.dexterous.flutterlocalnotifications.models.NotificationDetails.ACTION_KEY;
 
 /**
  * FlutterLocalNotificationsPlugin
@@ -93,11 +100,21 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private final Registrar registrar;
     private MethodChannel channel;
 
+    public static FlutterLocalNotificationsPlugin instance;
+
     private FlutterLocalNotificationsPlugin(Registrar registrar) {
+        instance = this;
         this.registrar = registrar;
         this.registrar.addNewIntentListener(this);
         this.channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL);
         this.channel.setMethodCallHandler(this);
+    }
+
+    public void notifyActionTapped(String actionKey, Map<String, String> actionExtras) {
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put(ACTION_KEY, actionKey);
+        arguments.put(ACTION_EXTRAS, actionExtras);
+        channel.invokeMethod("onNotificationActionTapped", arguments);
     }
 
     public static void rescheduleNotifications(Context context) {
@@ -142,6 +159,9 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         setLights(notificationDetails, builder);
         setStyle(context, notificationDetails, builder);
         setProgress(notificationDetails, builder);
+
+        setNotificationActions(context, notificationDetails, builder);
+
         return builder.build();
     }
 
@@ -426,6 +446,27 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static void setProgress(NotificationDetails notificationDetails, NotificationCompat.Builder builder) {
         if (BooleanUtils.getValue(notificationDetails.showProgress)) {
             builder.setProgress(notificationDetails.maxProgress, notificationDetails.progress, notificationDetails.indeterminate);
+        }
+    }
+
+    private static void setNotificationActions(Context context, NotificationDetails notificationDetails, NotificationCompat.Builder builder) {
+        if (notificationDetails.actions == null || notificationDetails.actions.length <= 0) {
+            return;
+        }
+
+        for (NotificationActionDetails actionDetail : notificationDetails.actions) {
+            int iconDrawableResourceId = getDrawableResourceId(context, actionDetail.icon);
+
+            Intent actionIntent = new Intent(context, NotificationActionBroadcastReceiver.class);
+            actionIntent.setAction(actionDetail.actionKey);
+            actionIntent.putExtra(ACTION_EXTRAS, actionDetail.extras);
+
+            PendingIntent actionPendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), notificationDetails.id, actionIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            NotificationCompat.Action action = new NotificationCompat.Action.Builder(
+                    iconDrawableResourceId, actionDetail.title, actionPendingIntent)
+                    .build();
+
+            builder.addAction(action);
         }
     }
 

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'enums.dart';
+import 'notification_action.dart';
 import 'styles/style_information.dart';
 import 'styles/default_style_information.dart';
 
@@ -177,7 +178,7 @@ class AndroidNotificationDetails {
       'ledColorBlue': ledColor?.blue,
       'ledOnMs': ledOnMs,
       'ledOffMs': ledOffMs,
-      'ticker': ticker
+      'ticker': ticker,
     };
   }
 }
