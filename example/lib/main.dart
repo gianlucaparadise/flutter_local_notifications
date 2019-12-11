@@ -177,6 +177,17 @@ class _HomePageState extends State<HomePage> {
                   Padding(
                     padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 8.0),
                     child: Text(
+                        'Media Player Notification'),
+                  ),
+                  PaddedRaisedButton(
+                    buttonText: 'Show media player notification [Android]',
+                    onPressed: () async {
+                      await _showMediaPlayerNotification();
+                    },
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 8.0),
+                    child: Text(
                         'Tap on a notification when it appears to trigger navigation'),
                   ),
                   PaddedRaisedButton(
@@ -710,6 +721,65 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  //region Media Player Notification
+  bool isPlaying = false;
+
+  Future<void> _showMediaPlayerNotification() async {
+    var mediaStyleInformation = MediaStyleInformation(
+      showActionsInCompactView: [0],
+    );
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'your channel id',
+      'your channel name',
+      'your channel description',
+      ongoing: true,
+      priority: Priority.Low,
+      style: AndroidNotificationStyle.Media,
+      styleInformation: mediaStyleInformation,
+      visibility: NotificationVisibility.Public,
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+
+    List<NotificationAction> actions = [];
+    if (this.isPlaying) {
+      actions.add(NotificationAction(
+        icon: 'baseline_pause_black_18dp',
+        title: 'Pause',
+        actionKey: 'PLAYER_PAUSE',
+        extras: {'extra2': 'pause_extra'},
+      ));
+    }
+    else {
+      actions.add(NotificationAction(
+        icon: 'baseline_play_arrow_black_18dp',
+        title: 'Play',
+        actionKey: 'PLAYER_PLAY',
+        extras: {'extra1': 'play_extra'},
+      ));
+    }
+    actions.add(NotificationAction(
+      icon: 'baseline_stop_black_18dp',
+      title: 'Stop',
+      actionKey: 'PLAYER_STOP',
+    ));
+
+    await flutterLocalNotificationsPlugin.show(
+      42,
+      'Song Title',
+      'Album Title',
+      platformChannelSpecifics,
+      actions: actions,
+    );
+  }
+
+  void onPlayerNotificationActionTapped(NotificationActionTappedPayload payload) async {
+    isPlaying = payload.actionKey == "PLAYER_PLAY";
+    await _showMediaPlayerNotification();
+  }
+  //endregion
+
   Future<void> _cancelAllNotifications() async {
     await flutterLocalNotificationsPlugin.cancelAll();
   }
@@ -879,9 +949,15 @@ class _HomePageState extends State<HomePage> {
   void onNotificationActionTapped(NotificationActionTappedPayload payload) {
     debugPrint("onNotificationActionTapped extras: ${payload.extras}");
 
-    setState(() {
-      lastTappedAction = payload.actionKey;
-    });
+    if (payload.actionKey.startsWith("PLAYER_")) {
+      // this is a player notification and needs to be handled differently
+      onPlayerNotificationActionTapped(payload);
+    }
+    else {
+      setState(() {
+        lastTappedAction = payload.actionKey;
+      });
+    }
   }
 
   Future<void> onDidReceiveLocalNotification(
