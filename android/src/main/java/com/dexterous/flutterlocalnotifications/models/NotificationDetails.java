@@ -93,6 +93,8 @@ public class NotificationDetails {
 
     private static final String LED_ON_MS = "ledOnMs";
     private static final String LED_OFF_MS = "ledOffMs";
+    
+    private static final String VISIBILITY = "visibility";
 
     private static final String ACTIONS = "actions";
 
@@ -151,6 +153,7 @@ public class NotificationDetails {
     public Integer ledOnMs;
     public Integer ledOffMs;
     public String ticker;
+    public Integer visibility;
     public Boolean allowWhileIdle;
     public NotificationActionDetails[] actions;
 
@@ -223,6 +226,7 @@ public class NotificationDetails {
                 }
             }
             notificationDetails.ticker = (String) platformChannelSpecifics.get(TICKER);
+            notificationDetails.visibility = (Integer) platformChannelSpecifics.get(VISIBILITY);
             notificationDetails.allowWhileIdle = (Boolean) platformChannelSpecifics.get(ALLOW_WHILE_IDLE);
         }
         return notificationDetails;
