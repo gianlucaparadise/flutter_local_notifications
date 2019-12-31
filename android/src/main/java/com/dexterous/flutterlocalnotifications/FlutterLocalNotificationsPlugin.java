@@ -37,7 +37,6 @@ import com.dexterous.flutterlocalnotifications.models.styles.BigPictureStyleInfo
 import com.dexterous.flutterlocalnotifications.models.styles.BigTextStyleInformation;
 import com.dexterous.flutterlocalnotifications.models.styles.DefaultStyleInformation;
 import com.dexterous.flutterlocalnotifications.models.styles.InboxStyleInformation;
-import com.dexterous.flutterlocalnotifications.models.styles.MediaStyleInformation;
 import com.dexterous.flutterlocalnotifications.models.styles.MessagingStyleInformation;
 import com.dexterous.flutterlocalnotifications.models.styles.StyleInformation;
 import com.dexterous.flutterlocalnotifications.utils.BooleanUtils;
@@ -48,7 +47,6 @@ import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -470,7 +468,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
                 setMessagingStyle(context, notificationDetails, builder);
                 break;
             case Media:
-                setMediaStyle(notificationDetails, builder);
+                setMediaStyle(builder);
                 break;
             default:
                 break;
@@ -546,27 +544,9 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         builder.setStyle(inboxStyle);
     }
 
-    private static void setMediaStyle(NotificationDetails notificationDetails, NotificationCompat.Builder builder) {
-        MediaStyleInformation mediaStyleInformation = (MediaStyleInformation) notificationDetails.styleInformation;
-        int[] showActionsInCompactView = convertIntegers(mediaStyleInformation.showActionsInCompactView);
-
+    private static void setMediaStyle(NotificationCompat.Builder builder) {
         androidx.media.app.NotificationCompat.MediaStyle mediaStyle = new androidx.media.app.NotificationCompat.MediaStyle();
-        mediaStyle.setShowActionsInCompactView(showActionsInCompactView);
-
         builder.setStyle(mediaStyle);
-    }
-
-    private static int[] convertIntegers(List<Integer> integers)
-    {
-        if (integers == null) return null;
-
-        int[] result = new int[integers.size()];
-        Iterator<Integer> iterator = integers.iterator();
-        for (int i = 0; i < result.length; i++)
-        {
-            result[i] = iterator.next();
-        }
-        return result;
     }
 
     private static void setMessagingStyle(Context context, NotificationDetails notificationDetails, NotificationCompat.Builder builder) {
@@ -856,25 +836,17 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
             BigPictureStyleInformation bigPictureStyleInformation = (BigPictureStyleInformation) notificationDetails.styleInformation;
             if (hasInvalidLargeIcon(result, bigPictureStyleInformation.largeIcon, bigPictureStyleInformation.largeIconBitmapSource))
                 return true;
-            if (bigPictureStyleInformation.bigPictureBitmapSource == BitmapSource.Drawable && !isValidDrawableResource(registrar.context(), bigPictureStyleInformation.bigPicture, result, INVALID_BIG_PICTURE_ERROR_CODE)) {
-                return true;
-            }
+            return bigPictureStyleInformation.bigPictureBitmapSource == BitmapSource.Drawable && !isValidDrawableResource(registrar.context(), bigPictureStyleInformation.bigPicture, result, INVALID_BIG_PICTURE_ERROR_CODE);
         }
         return false;
     }
 
     private boolean hasInvalidLargeIcon(Result result, String largeIcon, BitmapSource largeIconBitmapSource) {
-        if (!StringUtils.isNullOrEmpty(largeIcon) && largeIconBitmapSource == BitmapSource.Drawable && !isValidDrawableResource(registrar.context(), largeIcon, result, INVALID_LARGE_ICON_ERROR_CODE)) {
-            return true;
-        }
-        return false;
+        return !StringUtils.isNullOrEmpty(largeIcon) && largeIconBitmapSource == BitmapSource.Drawable && !isValidDrawableResource(registrar.context(), largeIcon, result, INVALID_LARGE_ICON_ERROR_CODE);
     }
 
     private boolean hasInvalidIcon(Result result, String icon) {
-        if (!StringUtils.isNullOrEmpty(icon) && !isValidDrawableResource(registrar.context(), icon, result, INVALID_ICON_ERROR_CODE)) {
-            return true;
-        }
-        return false;
+        return !StringUtils.isNullOrEmpty(icon) && !isValidDrawableResource(registrar.context(), icon, result, INVALID_ICON_ERROR_CODE);
     }
 
     private void cancelNotification(Integer id) {
