@@ -37,6 +37,7 @@ import com.dexterous.flutterlocalnotifications.models.styles.BigPictureStyleInfo
 import com.dexterous.flutterlocalnotifications.models.styles.BigTextStyleInformation;
 import com.dexterous.flutterlocalnotifications.models.styles.DefaultStyleInformation;
 import com.dexterous.flutterlocalnotifications.models.styles.InboxStyleInformation;
+import com.dexterous.flutterlocalnotifications.models.styles.MediaStyleInformation;
 import com.dexterous.flutterlocalnotifications.models.styles.MessagingStyleInformation;
 import com.dexterous.flutterlocalnotifications.models.styles.StyleInformation;
 import com.dexterous.flutterlocalnotifications.utils.BooleanUtils;
@@ -47,6 +48,7 @@ import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -468,7 +470,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
                 setMessagingStyle(context, notificationDetails, builder);
                 break;
             case Media:
-                setMediaStyle(builder);
+                setMediaStyle(notificationDetails, builder);
                 break;
             default:
                 break;
@@ -544,9 +546,27 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         builder.setStyle(inboxStyle);
     }
 
-    private static void setMediaStyle(NotificationCompat.Builder builder) {
+    private static void setMediaStyle(NotificationDetails notificationDetails, NotificationCompat.Builder builder) {
+        MediaStyleInformation mediaStyleInformation = (MediaStyleInformation) notificationDetails.styleInformation;
+        int[] showActionsInCompactView = convertIntegers(mediaStyleInformation.showActionsInCompactView);
+
         androidx.media.app.NotificationCompat.MediaStyle mediaStyle = new androidx.media.app.NotificationCompat.MediaStyle();
+        mediaStyle.setShowActionsInCompactView(showActionsInCompactView);
+
         builder.setStyle(mediaStyle);
+    }
+
+    private static int[] convertIntegers(List<Integer> integers)
+    {
+        if (integers == null) return null;
+
+        int[] result = new int[integers.size()];
+        Iterator<Integer> iterator = integers.iterator();
+        for (int i = 0; i < result.length; i++)
+        {
+            result[i] = iterator.next();
+        }
+        return result;
     }
 
     private static void setMessagingStyle(Context context, NotificationDetails notificationDetails, NotificationCompat.Builder builder) {
