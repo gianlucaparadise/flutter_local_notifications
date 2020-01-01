@@ -4,6 +4,9 @@
 [![Build Status](https://api.cirrus-ci.com/github/MaikuB/flutter_local_notifications.svg)](https://cirrus-ci.com/github/MaikuB/flutter_local_notifications/master)
 
 A cross platform plugin for displaying local notifications.
+
+## *️⃣ Only in this fork
+
 This fork can also handle media notifications on Android and can create a Media Player-like notification. An example is provided in the [sample app](./example/lib/main.dart#L727).
 
 ## Supported Platforms
@@ -41,7 +44,7 @@ This fork can also handle media notifications on Android and can create a Media 
         * While media playback control using a `MediaSession.Token` is not supported, with this style you let Android treat the `largeIcon` bitmap as album artwork
 * [Android] Group notifications
 * [Android] Show progress notifications
-* *️⃣[Android] Configure notification visibility on the lockscreen (*Only in this fork*)
+* [Android] Configure notification visibility on the lockscreen
 * [iOS] Customise the permissions to be requested around displaying notifications
 
 Note that this plugin aims to provide abstractions for all platforms as opposed to having methods that only work on specific platforms. However, each method allows passing in "platform-specifics" that contains data that is specific for customising notifications on each platform. This approach means that some scenarios may not be covered by the plugin. Developers can either fork or maintain their code for showing notifications in these situations. Note that the plugin still under development so expect the API surface to change over time.
